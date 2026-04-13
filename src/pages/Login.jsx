@@ -1,3 +1,4 @@
+import toast from 'react-hot-toast'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { HiMail, HiLockClosed, HiEye, HiEyeOff } from 'react-icons/hi'
@@ -24,7 +25,14 @@ function Login() {
     setError('')
     setLoading(true)
     try {
-      await signInWithEmailAndPassword(auth, form.email, form.password)
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        form.email,
+        form.password,
+      )
+      toast.success(
+        `Welcome back, ${userCredential.user.displayName?.split(' ')[0] || 'there'}! 👋`,
+      )
       navigate('/')
     } catch (err) {
       setError('Invalid email or password. Please try again.')

@@ -1,3 +1,4 @@
+import toast from 'react-hot-toast'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { HiMail, HiLockClosed, HiEye, HiEyeOff, HiUser } from 'react-icons/hi'
@@ -46,6 +47,7 @@ function Signup() {
         role: 'user',
         createdAt: new Date(),
       })
+      toast.success(`Welcome to Homenaija, ${form.name.split(' ')[0]}! 🎉`)
       navigate('/')
     } catch (err) {
       if (err.code === 'auth/email-already-in-use') {
@@ -71,6 +73,9 @@ function Signup() {
           createdAt: new Date(),
         },
         { merge: true },
+      )
+      toast.success(
+        `Welcome to Homenaija, ${userCredential.user.displayName.split(' ')[0]}! 🎉`,
       )
       navigate('/')
     } catch (err) {
