@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { HiLocationMarker, HiPhone, HiMail } from 'react-icons/hi'
 import {
   FaFacebookF,
@@ -114,7 +115,15 @@ function Footer() {
       <div className='border-t border-gray-800'>
         <div className='max-w-7xl mx-auto px-4 py-5 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs'>
           <p>© {new Date().getFullYear()} Homenaija. All rights reserved.</p>
-          <p>Built with ❤️ for Nigerians</p>
+          <div className='flex items-center gap-4'>
+            <p>Built for Nigerians</p>
+            <Link
+              to='/admin'
+              className='text-gray-700 hover:text-gray-500 transition-colors duration-200 text-xs'
+            >
+              Admin
+            </Link>
+          </div>
         </div>
       </div>
     </footer>
