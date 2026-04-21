@@ -1,77 +1,169 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   HiPlus,
   HiPencil,
   HiTrash,
   HiLocationMarker,
   HiX,
+  HiUpload,
 } from 'react-icons/hi'
-import { properties as initialProperties } from '../data/properties'
+import {
+  collection,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+} from 'firebase/firestore'
+import { db } from '../firebase/config'
+
+const emptyForm = {
+  title: '',
+  location: '',
+  price: '',
+  bedrooms: '',
+  bathrooms: '',
+  area: '',
+  type: 'For Sale',
+  description: '',
+  agentName: '',
+  agentEmail: '',
+  agentPhone: '',
+  image: '',
+}
 
 function AdminDashboard() {
-  const [properties, setProperties] = useState(initialProperties)
+  const [properties, setProperties] = useState([])
+  const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingProperty, setEditingProperty] = useState(null)
-  const [form, setForm] = useState({
-    title: '',
-    location: '',
-    price: '',
-    bedrooms: '',
-    bathrooms: '',
-    area: '',
-    type: 'For Sale',
-    image: '',
-  })
+  const [submitting, setSubmitting] = useState(false)
+  const [form, setForm] = useState(emptyForm)
+  const [imageFile, setImageFile] = useState(null)
+  const [imagePreview, setImagePreview] = useState('')
+  const [uploadProgress, setUploadProgress] = useState(0)
+
+  const fetchProperties = async () => {
+    try {
+      const snapshot = await getDocs(collection(db, 'properties'))
+      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      setProperties(data)
+    } catch (error) {
+      console.error('Error fetching properties:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchProperties()
+  }, [])
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value })
   }
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      setImageFile(file)
+      setImagePreview(URL.createObjectURL(file))
+    }
+  }
+
+  const uploadImage = async () => {
+    if (!imageFile) return form.image
+
+    const formData = new FormData()
+    formData.append('file', imageFile)
+    formData.append('upload_preset', 'homenaija_uploads')
+    formData.append('cloud_name', 'dcvnvcyux')
+
+    setUploadProgress(10)
+
+    const response = await fetch(
+      'https://api.cloudinary.com/v1_1/dcvnvcyux/image/upload',
+      {
+        method: 'POST',
+        body: formData,
+      },
+    )
+
+    setUploadProgress(90)
+    const data = await response.json()
+    setUploadProgress(100)
+    return data.secure_url
+  }
+
   const openAddModal = () => {
     setEditingProperty(null)
-    setForm({
-      title: '',
-      location: '',
-      price: '',
-      bedrooms: '',
-      bathrooms: '',
-      area: '',
-      type: 'For Sale',
-      image: '',
-    })
+    setForm(emptyForm)
+    setImageFile(null)
+    setImagePreview('')
+    setUploadProgress(0)
     setShowModal(true)
   }
 
   const openEditModal = (property) => {
     setEditingProperty(property)
-    setForm({ ...property, price: String(property.price) })
+    setForm({ ...emptyForm, ...property, price: String(property.price) })
+    setImagePreview(property.image || '')
+    setImageFile(null)
+    setUploadProgress(0)
     setShowModal(true)
   }
 
-  const handleDelete = (id) => {
-    setProperties(properties.filter((p) => p.id !== id))
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this property?'))
+      return
+    try {
+      await deleteDoc(doc(db, 'properties', id))
+      setProperties(properties.filter((p) => p.id !== id))
+    } catch (error) {
+      console.error('Error deleting property:', error)
+    }
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!form.title || !form.location || !form.price) return
-
-    if (editingProperty) {
-      setProperties(
-        properties.map((p) =>
-          p.id === editingProperty.id
-            ? { ...form, id: editingProperty.id, price: Number(form.price) }
-            : p,
-        ),
-      )
-    } else {
-      const newProperty = {
-        ...form,
-        id: Date.now(),
+    setSubmitting(true)
+    try {
+      const imageURL = await uploadImage()
+      const propertyData = {
+        title: form.title,
+        location: form.location,
         price: Number(form.price),
+        bedrooms: Number(form.bedrooms),
+        bathrooms: Number(form.bathrooms),
+        area: Number(form.area),
+        type: form.type,
+        description: form.description,
+        agentName: form.agentName,
+        agentEmail: form.agentEmail,
+        agentPhone: form.agentPhone,
+        image: imageURL,
       }
-      setProperties([newProperty, ...properties])
+
+      if (editingProperty) {
+        await updateDoc(doc(db, 'properties', editingProperty.id), propertyData)
+        setProperties(
+          properties.map((p) =>
+            p.id === editingProperty.id
+              ? { id: editingProperty.id, ...propertyData }
+              : p,
+          ),
+        )
+      } else {
+        const docRef = await addDoc(collection(db, 'properties'), propertyData)
+        setProperties([{ id: docRef.id, ...propertyData }, ...properties])
+      }
+      setShowModal(false)
+    } catch (error) {
+      console.error('Error saving property:', error)
+    } finally {
+      setSubmitting(false)
+      setUploadProgress(0)
     }
-    setShowModal(false)
   }
 
   const stats = [
@@ -122,103 +214,109 @@ function AdminDashboard() {
         </div>
 
         {/* Table */}
-        <div className='bg-white rounded-2xl shadow-sm overflow-hidden'>
-          <div className='overflow-x-auto'>
-            <table className='w-full text-sm'>
-              <thead className='bg-gray-50 border-b border-gray-100'>
-                <tr>
-                  <th className='text-left px-6 py-4 font-semibold text-gray-600'>
-                    Property
-                  </th>
-                  <th className='text-left px-6 py-4 font-semibold text-gray-600'>
-                    Location
-                  </th>
-                  <th className='text-left px-6 py-4 font-semibold text-gray-600'>
-                    Price
-                  </th>
-                  <th className='text-left px-6 py-4 font-semibold text-gray-600'>
-                    Type
-                  </th>
-                  <th className='text-left px-6 py-4 font-semibold text-gray-600'>
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className='divide-y divide-gray-100'>
-                {properties.map((property) => (
-                  <tr
-                    key={property.id}
-                    className='hover:bg-gray-50 transition-colors duration-150'
-                  >
-                    <td className='px-6 py-4'>
-                      <div className='flex items-center gap-3'>
-                        <img
-                          src={property.image}
-                          alt={property.title}
-                          className='w-12 h-12 rounded-xl object-cover flex-shrink-0'
-                        />
-                        <div>
-                          <p className='font-semibold text-gray-900'>
-                            {property.title}
-                          </p>
-                          <p className='text-gray-400 text-xs'>
-                            {property.bedrooms} beds · {property.bathrooms}{' '}
-                            baths · {property.area}m²
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className='px-6 py-4'>
-                      <div className='flex items-center gap-1 text-gray-500'>
-                        <HiLocationMarker
-                          className='text-brown flex-shrink-0'
-                          size={14}
-                        />
-                        {property.location}
-                      </div>
-                    </td>
-                    <td className='px-6 py-4 font-semibold text-gray-900'>
-                      {new Intl.NumberFormat('en-NG', {
-                        style: 'currency',
-                        currency: 'NGN',
-                        maximumFractionDigits: 0,
-                      }).format(property.price)}
-                    </td>
-                    <td className='px-6 py-4'>
-                      <span
-                        className={`text-xs font-bold px-3 py-1 rounded-full ${property.type === 'For Rent' ? 'bg-blue-100 text-blue-600' : 'bg-brown/10 text-brown-dark'}`}
-                      >
-                        {property.type}
-                      </span>
-                    </td>
-                    <td className='px-6 py-4'>
-                      <div className='flex items-center gap-2'>
-                        <button
-                          onClick={() => openEditModal(property)}
-                          className='p-2 bg-gray-100 hover:bg-brown hover:text-white rounded-lg transition-all duration-200'
-                        >
-                          <HiPencil size={16} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(property.id)}
-                          className='p-2 bg-gray-100 hover:bg-red-500 hover:text-white rounded-lg transition-all duration-200'
-                        >
-                          <HiTrash size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {loading ? (
+          <div className='flex justify-center py-20'>
+            <div className='w-10 h-10 border-4 border-brown border-t-transparent rounded-full animate-spin' />
           </div>
-        </div>
+        ) : (
+          <div className='bg-white rounded-2xl shadow-sm overflow-hidden'>
+            <div className='overflow-x-auto'>
+              <table className='w-full text-sm'>
+                <thead className='bg-gray-50 border-b border-gray-100'>
+                  <tr>
+                    <th className='text-left px-6 py-4 font-semibold text-gray-600'>
+                      Property
+                    </th>
+                    <th className='text-left px-6 py-4 font-semibold text-gray-600'>
+                      Location
+                    </th>
+                    <th className='text-left px-6 py-4 font-semibold text-gray-600'>
+                      Price
+                    </th>
+                    <th className='text-left px-6 py-4 font-semibold text-gray-600'>
+                      Type
+                    </th>
+                    <th className='text-left px-6 py-4 font-semibold text-gray-600'>
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className='divide-y divide-gray-100'>
+                  {properties.map((property) => (
+                    <tr
+                      key={property.id}
+                      className='hover:bg-gray-50 transition-colors duration-150'
+                    >
+                      <td className='px-6 py-4'>
+                        <div className='flex items-center gap-3'>
+                          <img
+                            src={property.image}
+                            alt={property.title}
+                            className='w-12 h-12 rounded-xl object-cover flex-shrink-0'
+                          />
+                          <div>
+                            <p className='font-semibold text-gray-900'>
+                              {property.title}
+                            </p>
+                            <p className='text-gray-400 text-xs'>
+                              {property.bedrooms} beds · {property.bathrooms}{' '}
+                              baths · {property.area}m²
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className='px-6 py-4'>
+                        <div className='flex items-center gap-1 text-gray-500'>
+                          <HiLocationMarker
+                            className='text-brown flex-shrink-0'
+                            size={14}
+                          />
+                          {property.location}
+                        </div>
+                      </td>
+                      <td className='px-6 py-4 font-semibold text-gray-900'>
+                        {new Intl.NumberFormat('en-NG', {
+                          style: 'currency',
+                          currency: 'NGN',
+                          maximumFractionDigits: 0,
+                        }).format(property.price)}
+                      </td>
+                      <td className='px-6 py-4'>
+                        <span
+                          className={`text-xs font-bold px-3 py-1 rounded-full ${property.type === 'For Rent' ? 'bg-blue-100 text-blue-600' : 'bg-brown/10 text-brown-dark'}`}
+                        >
+                          {property.type}
+                        </span>
+                      </td>
+                      <td className='px-6 py-4'>
+                        <div className='flex items-center gap-2'>
+                          <button
+                            onClick={() => openEditModal(property)}
+                            className='p-2 bg-gray-100 hover:bg-brown hover:text-white rounded-lg transition-all duration-200'
+                          >
+                            <HiPencil size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(property.id)}
+                            className='p-2 bg-gray-100 hover:bg-red-500 hover:text-white rounded-lg transition-all duration-200'
+                          >
+                            <HiTrash size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Modal */}
       {showModal && (
         <div className='fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4'>
-          <div className='bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto'>
+          <div className='bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto'>
             <div className='flex items-center justify-between p-6 border-b border-gray-100'>
               <h2 className='text-xl font-bold text-gray-900'>
                 {editingProperty ? 'Edit Property' : 'Add New Property'}
@@ -232,22 +330,82 @@ function AdminDashboard() {
             </div>
 
             <div className='p-6 space-y-4'>
-              <input
-                type='text'
-                name='title'
-                placeholder='Property Title'
-                value={form.title}
-                onChange={handleChange}
-                className='w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-brown transition-colors duration-200'
-              />
-              <input
-                type='text'
-                name='location'
-                placeholder='Location'
-                value={form.location}
-                onChange={handleChange}
-                className='w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-brown transition-colors duration-200'
-              />
+              {/* Image Upload */}
+              <div>
+                <label className='block text-sm font-semibold text-gray-700 mb-2'>
+                  Property Image
+                </label>
+                <div className='border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-brown transition-colors duration-200'>
+                  {imagePreview ? (
+                    <div className='relative'>
+                      <img
+                        src={imagePreview}
+                        alt='Preview'
+                        className='w-full h-48 object-cover rounded-xl'
+                      />
+                      <button
+                        onClick={() => {
+                          setImagePreview('')
+                          setImageFile(null)
+                        }}
+                        className='absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full'
+                      >
+                        <HiX size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className='cursor-pointer'>
+                      <HiUpload
+                        size={32}
+                        className='text-gray-400 mx-auto mb-2'
+                      />
+                      <p className='text-gray-500 text-sm'>
+                        Click to upload property image
+                      </p>
+                      <input
+                        type='file'
+                        accept='image/*'
+                        onChange={handleImageChange}
+                        className='hidden'
+                      />
+                    </label>
+                  )}
+                </div>
+                {uploadProgress > 0 && uploadProgress < 100 && (
+                  <div className='mt-2'>
+                    <div className='w-full bg-gray-200 rounded-full h-2'>
+                      <div
+                        className='bg-brown h-2 rounded-full transition-all duration-200'
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                    <p className='text-xs text-gray-500 mt-1'>
+                      Uploading... {uploadProgress}%
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Property Details */}
+              <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                <input
+                  type='text'
+                  name='title'
+                  placeholder='Property Title'
+                  value={form.title}
+                  onChange={handleChange}
+                  className='w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-brown transition-colors duration-200'
+                />
+                <input
+                  type='text'
+                  name='location'
+                  placeholder='Location'
+                  value={form.location}
+                  onChange={handleChange}
+                  className='w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-brown transition-colors duration-200'
+                />
+              </div>
+
               <input
                 type='number'
                 name='price'
@@ -256,6 +414,7 @@ function AdminDashboard() {
                 onChange={handleChange}
                 className='w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-brown transition-colors duration-200'
               />
+
               <div className='grid grid-cols-3 gap-3'>
                 <input
                   type='number'
@@ -282,6 +441,7 @@ function AdminDashboard() {
                   className='w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-brown transition-colors duration-200'
                 />
               </div>
+
               <select
                 name='type'
                 value={form.type}
@@ -291,14 +451,48 @@ function AdminDashboard() {
                 <option value='For Sale'>For Sale</option>
                 <option value='For Rent'>For Rent</option>
               </select>
-              <input
-                type='text'
-                name='image'
-                placeholder='Image URL'
-                value={form.image}
+
+              <textarea
+                name='description'
+                placeholder='Full property description...'
+                value={form.description}
                 onChange={handleChange}
-                className='w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-brown transition-colors duration-200'
+                rows={4}
+                className='w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-brown transition-colors duration-200 resize-none'
               />
+
+              {/* Agent Details */}
+              <div className='border-t border-gray-100 pt-4'>
+                <p className='text-sm font-semibold text-gray-700 mb-3'>
+                  Agent Details
+                </p>
+                <div className='space-y-3'>
+                  <input
+                    type='text'
+                    name='agentName'
+                    placeholder='Agent Full Name'
+                    value={form.agentName}
+                    onChange={handleChange}
+                    className='w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-brown transition-colors duration-200'
+                  />
+                  <input
+                    type='email'
+                    name='agentEmail'
+                    placeholder='Agent Email'
+                    value={form.agentEmail}
+                    onChange={handleChange}
+                    className='w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-brown transition-colors duration-200'
+                  />
+                  <input
+                    type='tel'
+                    name='agentPhone'
+                    placeholder='Agent Phone Number'
+                    value={form.agentPhone}
+                    onChange={handleChange}
+                    className='w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-brown transition-colors duration-200'
+                  />
+                </div>
+              </div>
 
               <div className='flex gap-3 pt-2'>
                 <button
@@ -309,9 +503,14 @@ function AdminDashboard() {
                 </button>
                 <button
                   onClick={handleSubmit}
-                  className='flex-1 bg-brown text-white font-semibold py-3 rounded-xl hover:bg-brown-dark transition-all duration-200'
+                  disabled={submitting}
+                  className='flex-1 bg-brown text-white font-semibold py-3 rounded-xl hover:bg-brown-dark transition-all duration-200 disabled:opacity-60'
                 >
-                  {editingProperty ? 'Save Changes' : 'Add Property'}
+                  {submitting
+                    ? `Uploading... ${uploadProgress}%`
+                    : editingProperty
+                      ? 'Save Changes'
+                      : 'Add Property'}
                 </button>
               </div>
             </div>
