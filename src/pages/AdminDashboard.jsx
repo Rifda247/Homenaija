@@ -33,6 +33,7 @@ const emptyForm = {
 }
 
 function AdminDashboard() {
+  const [deleteId, setDeleteId] = useState(null)
   const [properties, setProperties] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -74,25 +75,34 @@ function AdminDashboard() {
   const uploadImage = async () => {
     if (!imageFile) return form.image
 
-    const formData = new FormData()
-    formData.append('file', imageFile)
-    formData.append('upload_preset', 'homenaija_uploads')
-    formData.append('cloud_name', 'dcvnvcyux')
+    try {
+      const formData = new FormData()
+      formData.append('file', imageFile)
+      formData.append('upload_preset', 'homenaija_uploads')
 
-    setUploadProgress(10)
+      setUploadProgress(10)
 
-    const response = await fetch(
-      'https://api.cloudinary.com/v1_1/dcvnvcyux/image/upload',
-      {
-        method: 'POST',
-        body: formData,
-      },
-    )
+      const response = await fetch(
+        'https://api.cloudinary.com/v1_1/dcvnvcyux/image/upload',
+        {
+          method: 'POST',
+          body: formData,
+        },
+      )
 
-    setUploadProgress(90)
-    const data = await response.json()
-    setUploadProgress(100)
-    return data.secure_url
+      const data = await response.json()
+
+      if (data.error) {
+        console.error('Cloudinary error:', data.error)
+        throw new Error(data.error.message)
+      }
+
+      setUploadProgress(100)
+      return data.secure_url
+    } catch (error) {
+      console.error('Upload failed:', error)
+      throw error
+    }
   }
 
   const openAddModal = () => {
@@ -113,12 +123,11 @@ function AdminDashboard() {
     setShowModal(true)
   }
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this property?'))
-      return
+  const handleDelete = async () => {
     try {
-      await deleteDoc(doc(db, 'properties', id))
-      setProperties(properties.filter((p) => p.id !== id))
+      await deleteDoc(doc(db, 'properties', deleteId))
+      setProperties(properties.filter((p) => p.id !== deleteId))
+      setDeleteId(null)
     } catch (error) {
       console.error('Error deleting property:', error)
     }
@@ -296,8 +305,9 @@ function AdminDashboard() {
                           >
                             <HiPencil size={16} />
                           </button>
+
                           <button
-                            onClick={() => handleDelete(property.id)}
+                            onClick={() => setDeleteId(property.id)}
                             className='p-2 bg-gray-100 hover:bg-red-500 hover:text-white rounded-lg transition-all duration-200'
                           >
                             <HiTrash size={16} />
@@ -327,6 +337,39 @@ function AdminDashboard() {
               >
                 <HiX size={24} />
               </button>
+              {/* Delete Confirmation Modal */}
+              {deleteId && (
+                <div className='fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4'>
+                  <div className='bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6'>
+                    <div className='text-center'>
+                      <div className='w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4'>
+                        <HiTrash size={28} className='text-red-500' />
+                      </div>
+                      <h2 className='text-xl font-bold text-gray-900'>
+                        Delete Property
+                      </h2>
+                      <p className='text-gray-500 mt-2 text-sm'>
+                        Are you sure you want to delete this property? This
+                        action cannot be undone.
+                      </p>
+                    </div>
+                    <div className='flex gap-3 mt-6'>
+                      <button
+                        onClick={() => setDeleteId(null)}
+                        className='flex-1 border border-gray-200 text-gray-700 font-semibold py-3 rounded-xl hover:bg-gray-50 transition-all duration-200'
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleDelete}
+                        className='flex-1 bg-red-500 text-white font-semibold py-3 rounded-xl hover:bg-red-600 transition-all duration-200'
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className='p-6 space-y-4'>
