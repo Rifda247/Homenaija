@@ -17,6 +17,9 @@ import {
 } from 'firebase/firestore'
 import { db } from '../firebase/config'
 
+const CLOUDINARY_CLOUD_NAME = 'dcvnvcyux'
+const CLOUDINARY_UPLOAD_PRESET = 'homenaija_uploads'
+
 const emptyForm = {
   title: '',
   location: '',
@@ -33,7 +36,6 @@ const emptyForm = {
 }
 
 function AdminDashboard() {
-  const [deleteId, setDeleteId] = useState(null)
   const [properties, setProperties] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -43,14 +45,16 @@ function AdminDashboard() {
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState('')
   const [uploadProgress, setUploadProgress] = useState(0)
+  const [deleteId, setDeleteId] = useState(null)
+  const [error, setError] = useState('')
 
   const fetchProperties = async () => {
     try {
       const snapshot = await getDocs(collection(db, 'properties'))
-      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
       setProperties(data)
-    } catch (error) {
-      console.error('Error fetching properties:', error)
+    } catch (err) {
+      console.error('Error fetching properties:', err)
     } finally {
       setLoading(false)
     }
@@ -73,36 +77,19 @@ function AdminDashboard() {
   }
 
   const uploadImage = async () => {
-    if (!imageFile) return form.image
-
-    try {
-      const formData = new FormData()
-      formData.append('file', imageFile)
-      formData.append('upload_preset', 'homenaija_uploads')
-
-      setUploadProgress(10)
-
-      const response = await fetch(
-        'https://api.cloudinary.com/v1_1/dcvnvcyux/image/upload',
-        {
-          method: 'POST',
-          body: formData,
-        },
-      )
-
-      const data = await response.json()
-
-      if (data.error) {
-        console.error('Cloudinary error:', data.error)
-        throw new Error(data.error.message)
-      }
-
-      setUploadProgress(100)
-      return data.secure_url
-    } catch (error) {
-      console.error('Upload failed:', error)
-      throw error
-    }
+    if (!imageFile) return form.image || ''
+    const formData = new FormData()
+    formData.append('file', imageFile)
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET)
+    setUploadProgress(20)
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+      { method: 'POST', body: formData },
+    )
+    const data = await response.json()
+    if (data.error) throw new Error(data.error.message)
+    setUploadProgress(100)
+    return data.secure_url
   }
 
   const openAddModal = () => {
@@ -111,6 +98,7 @@ function AdminDashboard() {
     setImageFile(null)
     setImagePreview('')
     setUploadProgress(0)
+    setError('')
     setShowModal(true)
   }
 
@@ -120,6 +108,7 @@ function AdminDashboard() {
     setImagePreview(property.image || '')
     setImageFile(null)
     setUploadProgress(0)
+    setError('')
     setShowModal(true)
   }
 
@@ -128,13 +117,17 @@ function AdminDashboard() {
       await deleteDoc(doc(db, 'properties', deleteId))
       setProperties(properties.filter((p) => p.id !== deleteId))
       setDeleteId(null)
-    } catch (error) {
-      console.error('Error deleting property:', error)
+    } catch (err) {
+      console.error('Error deleting:', err)
     }
   }
 
   const handleSubmit = async () => {
-    if (!form.title || !form.location || !form.price) return
+    setError('')
+    if (!form.title || !form.location || !form.price) {
+      setError('Please fill in title, location and price.')
+      return
+    }
     setSubmitting(true)
     try {
       const imageURL = await uploadImage()
@@ -152,7 +145,6 @@ function AdminDashboard() {
         agentPhone: form.agentPhone,
         image: imageURL,
       }
-
       if (editingProperty) {
         await updateDoc(doc(db, 'properties', editingProperty.id), propertyData)
         setProperties(
@@ -167,8 +159,9 @@ function AdminDashboard() {
         setProperties([{ id: docRef.id, ...propertyData }, ...properties])
       }
       setShowModal(false)
-    } catch (error) {
-      console.error('Error saving property:', error)
+    } catch (err) {
+      console.error('Error saving property:', err)
+      setError('Something went wrong. Please try again.')
     } finally {
       setSubmitting(false)
       setUploadProgress(0)
@@ -305,7 +298,6 @@ function AdminDashboard() {
                           >
                             <HiPencil size={16} />
                           </button>
-
                           <button
                             onClick={() => setDeleteId(property.id)}
                             className='p-2 bg-gray-100 hover:bg-red-500 hover:text-white rounded-lg transition-all duration-200'
@@ -323,7 +315,7 @@ function AdminDashboard() {
         )}
       </div>
 
-      {/* Modal */}
+      {/* Add/Edit Modal */}
       {showModal && (
         <div className='fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4'>
           <div className='bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto'>
@@ -337,39 +329,6 @@ function AdminDashboard() {
               >
                 <HiX size={24} />
               </button>
-              {/* Delete Confirmation Modal */}
-              {deleteId && (
-                <div className='fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4'>
-                  <div className='bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6'>
-                    <div className='text-center'>
-                      <div className='w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4'>
-                        <HiTrash size={28} className='text-red-500' />
-                      </div>
-                      <h2 className='text-xl font-bold text-gray-900'>
-                        Delete Property
-                      </h2>
-                      <p className='text-gray-500 mt-2 text-sm'>
-                        Are you sure you want to delete this property? This
-                        action cannot be undone.
-                      </p>
-                    </div>
-                    <div className='flex gap-3 mt-6'>
-                      <button
-                        onClick={() => setDeleteId(null)}
-                        className='flex-1 border border-gray-200 text-gray-700 font-semibold py-3 rounded-xl hover:bg-gray-50 transition-all duration-200'
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={handleDelete}
-                        className='flex-1 bg-red-500 text-white font-semibold py-3 rounded-xl hover:bg-red-600 transition-all duration-200'
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
 
             <div className='p-6 space-y-4'>
@@ -397,7 +356,7 @@ function AdminDashboard() {
                       </button>
                     </div>
                   ) : (
-                    <label className='cursor-pointer'>
+                    <label className='cursor-pointer block'>
                       <HiUpload
                         size={32}
                         className='text-gray-400 mx-auto mb-2'
@@ -537,6 +496,11 @@ function AdminDashboard() {
                 </div>
               </div>
 
+              {/* Error */}
+              {error && (
+                <p className='text-red-500 text-sm text-center'>{error}</p>
+              )}
+
               <div className='flex gap-3 pt-2'>
                 <button
                   onClick={() => setShowModal(false)}
@@ -550,12 +514,46 @@ function AdminDashboard() {
                   className='flex-1 bg-brown text-white font-semibold py-3 rounded-xl hover:bg-brown-dark transition-all duration-200 disabled:opacity-60'
                 >
                   {submitting
-                    ? `Uploading... ${uploadProgress}%`
+                    ? `Saving... ${uploadProgress}%`
                     : editingProperty
                       ? 'Save Changes'
                       : 'Add Property'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteId && (
+        <div className='fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4'>
+          <div className='bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6'>
+            <div className='text-center'>
+              <div className='w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4'>
+                <HiTrash size={28} className='text-red-500' />
+              </div>
+              <h2 className='text-xl font-bold text-gray-900'>
+                Delete Property
+              </h2>
+              <p className='text-gray-500 mt-2 text-sm'>
+                Are you sure you want to delete this property? This action
+                cannot be undone.
+              </p>
+            </div>
+            <div className='flex gap-3 mt-6'>
+              <button
+                onClick={() => setDeleteId(null)}
+                className='flex-1 border border-gray-200 text-gray-700 font-semibold py-3 rounded-xl hover:bg-gray-50 transition-all duration-200'
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className='flex-1 bg-red-500 text-white font-semibold py-3 rounded-xl hover:bg-red-600 transition-all duration-200'
+              >
+                Delete
+              </button>
             </div>
           </div>
         </div>
