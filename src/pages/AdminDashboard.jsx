@@ -18,7 +18,7 @@ import {
 import { db } from '../firebase/config'
 
 const CLOUDINARY_CLOUD_NAME = 'dcvnvcyux'
-const CLOUDINARY_UPLOAD_PRESET = 'homenaija_uploads'
+const CLOUDINARY_UPLOAD_PRESET = 'homenaija-uploads'
 
 const emptyForm = {
   title: '',
@@ -51,6 +51,8 @@ function AdminDashboard() {
   const fetchProperties = async () => {
     try {
       const snapshot = await getDocs(collection(db, 'properties'))
+      console.log(snapshot, 'snaps')
+
       const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
       setProperties(data)
     } catch (err) {
