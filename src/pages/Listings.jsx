@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useLocation, Link } from 'react-router-dom'
+import { collection, getDocs } from 'firebase/firestore'
+import { db } from '../firebase/config'
 import { HiSearch, HiLocationMarker, HiHeart } from 'react-icons/hi'
 import { IoBedOutline, IoWaterOutline } from 'react-icons/io5'
 import { BiArea } from 'react-icons/bi'
-import { Link } from 'react-router-dom'
-import { properties } from '../data/properties'
 
 function PropertyCard({ property }) {
   const formattedPrice = new Intl.NumberFormat('en-NG', {
@@ -32,34 +33,28 @@ function PropertyCard({ property }) {
           />
         </button>
       </div>
-
       <div className='p-5'>
         <h3 className='text-gray-900 font-bold text-lg leading-snug'>
           {property.title}
         </h3>
-
         <div className='flex items-center gap-1 mt-1 text-gray-500 text-sm'>
           <HiLocationMarker className='text-brown' size={16} />
           <span>{property.location}</span>
         </div>
-
         <div className='flex items-center gap-4 mt-4 text-gray-600 text-sm border-t border-gray-100 pt-4'>
           <div className='flex items-center gap-1'>
             <IoBedOutline size={18} className='text-brown' />
             <span>{property.bedrooms} Beds</span>
           </div>
-
           <div className='flex items-center gap-1'>
             <IoWaterOutline size={18} className='text-brown' />
             <span>{property.bathrooms} Baths</span>
           </div>
-
           <div className='flex items-center gap-1'>
             <BiArea size={18} className='text-brown' />
             <span>{property.area} m²</span>
           </div>
         </div>
-
         <div className='flex items-center justify-between mt-4'>
           <p className='text-brown-dark font-extrabold text-lg'>
             {formattedPrice}
@@ -76,20 +71,44 @@ function PropertyCard({ property }) {
 }
 
 function Listings() {
+  const [properties, setProperties] = useState([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [type, setType] = useState('All')
   const [minPrice, setMinPrice] = useState('')
   const [maxPrice, setMaxPrice] = useState('')
+  const location = useLocation()
+
+  useEffect(() => {
+    const fetchProperties = async () => {
+      try {
+        const snapshot = await getDocs(collection(db, 'properties'))
+        const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+        setProperties(data)
+      } catch (error) {
+        console.error('Error fetching properties:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchProperties()
+  }, [])
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const searchQuery = params.get('search')
+    if (searchQuery) {
+      setSearch(searchQuery)
+    }
+  }, [location.search])
 
   const filtered = properties.filter((p) => {
     const matchSearch =
       p.location.toLowerCase().includes(search.toLowerCase()) ||
       p.title.toLowerCase().includes(search.toLowerCase())
-
     const matchType = type === 'All' || p.type === type
     const matchMin = minPrice === '' || p.price >= Number(minPrice)
     const matchMax = maxPrice === '' || p.price <= Number(maxPrice)
-
     return matchSearch && matchType && matchMin && matchMax
   })
 
@@ -121,7 +140,6 @@ function Listings() {
               className='w-full pl-9 pr-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-brown transition-colors duration-200'
             />
           </div>
-
           <select
             value={type}
             onChange={(e) => setType(e.target.value)}
@@ -131,7 +149,6 @@ function Listings() {
             <option value='For Sale'>For Sale</option>
             <option value='For Rent'>For Rent</option>
           </select>
-
           <input
             type='number'
             placeholder='Min Price (₦)'
@@ -139,7 +156,6 @@ function Listings() {
             onChange={(e) => setMinPrice(e.target.value)}
             className='w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-brown transition-colors duration-200'
           />
-
           <input
             type='number'
             placeholder='Max Price (₦)'
@@ -150,16 +166,25 @@ function Listings() {
         </div>
 
         {/* Grid */}
-        {filtered.length > 0 ? (
+        {loading ? (
+          <div className='flex justify-center py-20'>
+            <div className='w-10 h-10 border-4 border-brown border-t-transparent rounded-full animate-spin' />
+          </div>
+        ) : filtered.length > 0 ? (
           <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8'>
             {filtered.map((property) => (
               <PropertyCard key={property.id} property={property} />
             ))}
           </div>
         ) : (
-          <p className='text-gray-500 text-center mt-10'>
-            No properties found.
-          </p>
+          <div className='text-center py-20'>
+            <p className='text-gray-400 text-xl font-semibold'>
+              No properties found
+            </p>
+            <p className='text-gray-400 text-sm mt-2'>
+              Try adjusting your search filters
+            </p>
+          </div>
         )}
       </div>
     </div>

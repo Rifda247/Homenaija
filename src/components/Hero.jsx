@@ -1,7 +1,20 @@
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import heroImg from '../assets/hero-bg.jpg'
 import { HiSearch } from 'react-icons/hi'
 
 function Hero() {
+  const [search, setSearch] = useState('')
+  const navigate = useNavigate()
+
+  const handleSearch = () => {
+    if (search.trim()) {
+      navigate(`/listings?search=${encodeURIComponent(search.trim())}`)
+    } else {
+      navigate('/listings')
+    }
+  }
+
   return (
     <section
       className='relative w-full h-screen bg-cover bg-center'
@@ -35,9 +48,15 @@ function Hero() {
           <input
             type='text'
             placeholder='Search by location, e.g. Lagos, Abuja...'
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             className='flex-1 px-5 py-4 text-gray-700 outline-none text-sm sm:text-base'
           />
-          <button className='bg-brown hover:bg-brown-dark text-white px-8 py-4 font-semibold text-sm sm:text-base transition-all duration-200 flex items-center justify-center gap-2'>
+          <button
+            onClick={handleSearch}
+            className='bg-brown hover:bg-brown-dark text-white px-8 py-4 font-semibold text-sm sm:text-base transition-all duration-200 flex items-center justify-center gap-2'
+          >
             <HiSearch size={20} />
             Search
           </button>
