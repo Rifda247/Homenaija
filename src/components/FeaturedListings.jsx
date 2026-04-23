@@ -1,3 +1,4 @@
+import AnimateOnScroll from './AnimateOnScroll'
 import { HiLocationMarker, HiHeart } from 'react-icons/hi'
 import { IoBedOutline, IoWaterOutline } from 'react-icons/io5'
 import { BiArea } from 'react-icons/bi'
@@ -79,32 +80,41 @@ function FeaturedListings() {
     <section className='bg-gray-50 py-20 px-4'>
       <div className='max-w-7xl mx-auto'>
         {/* Header */}
-        <div className='text-center mb-12'>
-          <span className='text-brown font-semibold text-sm uppercase tracking-widest'>
-            Handpicked For You
-          </span>
-          <h2 className='text-3xl sm:text-4xl font-extrabold text-gray-900 mt-2'>
-            Featured Properties
-          </h2>
-          <p className='text-gray-500 mt-3 max-w-xl mx-auto'>
-            Explore our top listed properties across Nigeria's most sought-after
-            locations.
-          </p>
-        </div>
+        <AnimateOnScroll>
+          <div className='text-center mb-12'>
+            <span className='text-brown font-semibold text-sm uppercase tracking-widest'>
+              Handpicked For You
+            </span>
+            <h2 className='text-3xl sm:text-4xl font-extrabold text-gray-900 mt-2'>
+              Featured Properties
+            </h2>
+            <p className='text-gray-500 mt-3 max-w-xl mx-auto'>
+              Explore our top listed properties across Nigeria's most
+              sought-after locations.
+            </p>
+          </div>
+        </AnimateOnScroll>
 
         {/* Grid */}
         <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8'>
-          {properties.map((property) => (
-            <PropertyCard key={property.id} property={property} />
+          {properties.map((property, index) => (
+            <AnimateOnScroll
+              key={property.id}
+              delay={index * 0.1}
+              direction='up'
+            >
+              <PropertyCard property={property} />
+            </AnimateOnScroll>
           ))}
         </div>
-
         {/* CTA */}
-        <div className='text-center mt-12'>
-          <button className='bg-brown text-white font-semibold px-8 py-3 rounded-xl hover:bg-brown-dark transition-all duration-200'>
-            View All Listings
-          </button>
-        </div>
+        <AnimateOnScroll>
+          <div className='text-center mt-12'>
+            <button className='bg-brown text-white font-semibold px-8 py-3 rounded-xl hover:bg-brown-dark transition-all duration-200'>
+              View All Listings
+            </button>
+          </div>
+        </AnimateOnScroll>
       </div>
     </section>
   )

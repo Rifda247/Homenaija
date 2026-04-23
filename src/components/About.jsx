@@ -1,3 +1,4 @@
+import AnimateOnScroll from './AnimateOnScroll'
 import { HiCheckCircle } from 'react-icons/hi'
 import { BsBuilding, BsPeopleFill, BsAwardFill } from 'react-icons/bs'
 

@@ -1,3 +1,4 @@
+import AnimateOnScroll from './AnimateOnScroll'
 import { HiStar } from 'react-icons/hi'
 import { FaQuoteLeft } from 'react-icons/fa'
 
@@ -59,18 +60,20 @@ function Testimonials() {
     <section className='bg-white py-20 px-4'>
       <div className='max-w-7xl mx-auto'>
         {/* Header */}
-        <div className='text-center mb-14'>
-          <span className='text-brown font-semibold text-sm uppercase tracking-widest'>
-            What People Say
-          </span>
-          <h2 className='text-3xl sm:text-4xl font-extrabold text-gray-900 mt-2'>
-            Trusted by Nigerians
-          </h2>
-          <p className='text-gray-500 mt-3 max-w-xl mx-auto'>
-            Don't just take our word for it. Here's what our happy clients have
-            to say about Homenaija.
-          </p>
-        </div>
+        <AnimateOnScroll>
+          <div className='text-center mb-14'>
+            <span className='text-brown font-semibold text-sm uppercase tracking-widest'>
+              What People Say
+            </span>
+            <h2 className='text-3xl sm:text-4xl font-extrabold text-gray-900 mt-2'>
+              Trusted by Nigerians
+            </h2>
+            <p className='text-gray-500 mt-3 max-w-xl mx-auto'>
+              Don't just take our word for it. Here's what our happy clients
+              have to say about Homenaija.
+            </p>
+          </div>
+        </AnimateOnScroll>
 
         {/* Grid */}
         <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6'>

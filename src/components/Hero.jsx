@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import heroImg from '../assets/hero-bg.jpg'
@@ -25,26 +26,42 @@ function Hero() {
 
       {/* Content */}
       <div className='relative z-10 flex flex-col items-center justify-center h-full text-center px-4'>
-        {/* Badge */}
-        <span className='bg-brown text-white text-sm font-semibold px-4 py-1 rounded-full mb-6 tracking-wide uppercase'>
+        <motion.span
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className='bg-brown text-white text-sm font-semibold px-4 py-1 rounded-full mb-6 tracking-wide uppercase'
+        >
           Nigeria's #1 Property Platform
-        </span>
+        </motion.span>
 
-        {/* Headline */}
-        <h1 className='text-4xl sm:text-5xl lg:text-7xl font-extrabold text-white leading-tight max-w-4xl'>
+        <motion.h1
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.2 }}
+          className='text-4xl sm:text-5xl lg:text-7xl font-extrabold text-white leading-tight max-w-4xl'
+        >
           Find Your Perfect
           <span className='text-brown-light'> Home </span>
           In Nigeria
-        </h1>
+        </motion.h1>
 
-        {/* Subtext */}
-        <p className='mt-4 text-gray-300 text-base sm:text-lg max-w-xl'>
+        <motion.p
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.4 }}
+          className='mt-4 text-gray-300 text-base sm:text-lg max-w-xl'
+        >
           Thousands of verified properties across Lagos, Abuja, Port Harcourt
           and beyond. Your dream home is one search away.
-        </p>
+        </motion.p>
 
-        {/* Search Bar */}
-        <div className='mt-10 w-full max-w-2xl bg-white rounded-2xl shadow-2xl flex flex-col sm:flex-row overflow-hidden'>
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.6 }}
+          className='mt-10 w-full max-w-2xl bg-white rounded-2xl shadow-2xl flex flex-col sm:flex-row overflow-hidden'
+        >
           <input
             type='text'
             placeholder='Search by location, e.g. Lagos, Abuja...'
@@ -60,10 +77,14 @@ function Hero() {
             <HiSearch size={20} />
             Search
           </button>
-        </div>
+        </motion.div>
 
-        {/* Stats */}
-        <div className='mt-12 flex flex-wrap justify-center gap-8 sm:gap-16'>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1, delay: 0.8 }}
+          className='mt-12 flex flex-wrap justify-center gap-8 sm:gap-16'
+        >
           {[
             { value: '5,000+', label: 'Properties Listed' },
             { value: '1,200+', label: 'Happy Clients' },
@@ -76,7 +97,7 @@ function Hero() {
               <p className='text-gray-300 text-sm mt-1'>{stat.label}</p>
             </div>
           ))}
-        </div>
+        </motion.div>
       </div>
     </section>
   )
