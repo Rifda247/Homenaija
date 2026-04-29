@@ -30,15 +30,10 @@ function Navbar() {
         <div className='flex items-center justify-between h-16'>
           {/* Logo */}
           <div className='flex-shrink-0'>
-            <Link to='/'>
-              <img
-                src='/src/assets/hero-g.png'
-                alt='Homenaija Logo'
-                className='h-10 w-auto object-contain mix-blend-multiply'
-              />
-            </Link>
+            <span className='text-2xl font-extrabold text-brown-dark'>
+              Home<span className='text-brown-light'>naija</span>
+            </span>
           </div>
-
           {/* Desktop Nav Links */}
           <div className='hidden md:flex items-center gap-8'>
             {navLinks.map((link) => (
