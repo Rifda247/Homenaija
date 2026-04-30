@@ -1,12 +1,52 @@
 import { useState, useEffect } from 'react'
 import { useLocation, Link } from 'react-router-dom'
-import { collection, getDocs } from 'firebase/firestore'
+import {
+  collection,
+  getDocs,
+  doc,
+  setDoc,
+  deleteDoc,
+  getDoc,
+} from 'firebase/firestore'
 import { db } from '../firebase/config'
+import { useAuth } from '../context/AuthContext'
+import toast from 'react-hot-toast'
 import { HiSearch, HiLocationMarker, HiHeart } from 'react-icons/hi'
 import { IoBedOutline, IoWaterOutline } from 'react-icons/io5'
 import { BiArea } from 'react-icons/bi'
 
 function PropertyCard({ property }) {
+  const { user } = useAuth()
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    const checkSaved = async () => {
+      if (!user) return
+      const ref = doc(db, 'users', user.uid, 'saved', property.id)
+      const snap = await getDoc(ref)
+      setSaved(snap.exists())
+    }
+    checkSaved()
+  }, [user, property.id])
+
+  const handleSave = async (e) => {
+    e.preventDefault()
+    if (!user) {
+      toast.error('Please log in to save properties!')
+      return
+    }
+    const ref = doc(db, 'users', user.uid, 'saved', property.id)
+    if (saved) {
+      await deleteDoc(ref)
+      setSaved(false)
+      toast.success('Property removed from saved!')
+    } else {
+      await setDoc(ref, { ...property })
+      setSaved(true)
+      toast.success('Property saved! ❤️')
+    }
+  }
+
   const formattedPrice = new Intl.NumberFormat('en-NG', {
     style: 'currency',
     currency: 'NGN',
@@ -26,9 +66,12 @@ function PropertyCard({ property }) {
         >
           {property.type}
         </span>
-        <button className='absolute top-3 right-3 bg-white p-2 rounded-full shadow hover:bg-red-50 transition-colors duration-200'>
+        <button
+          onClick={handleSave}
+          className='absolute top-3 right-3 bg-white p-2 rounded-full shadow hover:bg-red-50 transition-colors duration-200'
+        >
           <HiHeart
-            className='text-gray-400 hover:text-red-500 transition-colors duration-200'
+            className={saved ? 'text-red-500' : 'text-gray-400'}
             size={18}
           />
         </button>
@@ -115,7 +158,6 @@ function Listings() {
   return (
     <div className='min-h-screen bg-gray-50 pt-24 pb-16 px-4'>
       <div className='max-w-7xl mx-auto'>
-        {/* Header */}
         <div className='mb-10'>
           <h1 className='text-3xl sm:text-4xl font-extrabold text-gray-900'>
             Browse Properties
@@ -125,7 +167,6 @@ function Listings() {
           </p>
         </div>
 
-        {/* Filters */}
         <div className='bg-white rounded-2xl shadow-md p-6 mb-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
           <div className='relative'>
             <HiSearch
@@ -165,7 +206,6 @@ function Listings() {
           />
         </div>
 
-        {/* Grid */}
         {loading ? (
           <div className='flex justify-center py-20'>
             <div className='w-10 h-10 border-4 border-brown border-t-transparent rounded-full animate-spin' />

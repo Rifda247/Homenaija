@@ -1,3 +1,7 @@
+import { useState } from 'react'
+import { collection, addDoc } from 'firebase/firestore'
+import { db } from '../firebase/config'
+import toast from 'react-hot-toast'
 import { useParams, Link } from 'react-router-dom'
 import {
   HiLocationMarker,
@@ -13,6 +17,40 @@ import { properties } from '../data/properties'
 function SingleProperty() {
   const { id } = useParams()
   const property = properties.find((p) => p.id === Number(id))
+
+  const [contactForm, setContactForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    message: `I am interested in this property...`,
+  })
+  const [sending, setSending] = useState(false)
+
+  const handleContactChange = (e) => {
+    setContactForm({ ...contactForm, [e.target.name]: e.target.value })
+  }
+
+  const handleContactSubmit = async () => {
+    if (!contactForm.name || !contactForm.email) {
+      toast.error('Please fill in your name and email!')
+      return
+    }
+    setSending(true)
+    try {
+      await addDoc(collection(db, 'inquiries'), {
+        propertyId: property.id,
+        propertyTitle: property.title,
+        ...contactForm,
+        createdAt: new Date(),
+      })
+      toast.success('Message sent! The agent will contact you shortly. 🎉')
+      setContactForm({ name: '', email: '', phone: '', message: '' })
+    } catch (error) {
+      toast.error('Something went wrong. Please try again.')
+    } finally {
+      setSending(false)
+    }
+  }
 
   const formattedPrice = new Intl.NumberFormat('en-NG', {
     style: 'currency',
@@ -178,31 +216,48 @@ function SingleProperty() {
                 </div>
               </div>
 
-              {/* Contact Form */}
-              <div className='space-y-3'>
-                <input
-                  type='text'
-                  placeholder='Your Name'
-                  className='w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-brown transition-colors duration-200'
-                />
-                <input
-                  type='email'
-                  placeholder='Your Email'
-                  className='w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-brown transition-colors duration-200'
-                />
-                <input
-                  type='tel'
-                  placeholder='Your Phone Number'
-                  className='w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-brown transition-colors duration-200'
-                />
-                <textarea
-                  rows={4}
-                  placeholder='I am interested in this property...'
-                  className='w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-brown transition-colors duration-200 resize-none'
-                />
-                <button className='w-full bg-brown text-white font-semibold py-3 rounded-xl hover:bg-brown-dark transition-all duration-200'>
-                  Send Message
-                </button>
+             
+             {/* Contact Form */}
+             <div>
+               <input
+             type='text'
+             name='name'
+            placeholder='Your Name'
+            value={contactForm.name}
+            onChange={handleContactChange}
+           className='w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-brown transition-colors duration-200'
+                     />
+            <input
+           type='email'
+           name='email'
+           placeholder='Your Email'
+           value={contactForm.email}
+           onChange={handleContactChange}
+           className='w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-brown transition-colors duration-200'
+           />
+           <input
+          type='tel'
+          name='phone'
+           placeholder='Your Phone Number'
+           value={contactForm.phone}
+          onChange={handleContactChange}
+          className='w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-brown transition-colors duration-200'
+           />
+         <textarea
+         name='message'
+          rows={4}
+        placeholder='I am interested in this property...'
+       value={contactForm.message}
+        onChange={handleContactChange}
+         className='w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-brown transition-colors duration-200 resize-none'
+        />
+       <button
+       onClick={handleContactSubmit}
+       disabled={sending}
+       className='w-full bg-brown text-white font-semibold py-3 rounded-xl hover:bg-brown-dark transition-all duration-200 disabled:opacity-60'
+         >
+          {sending ? 'Sending...' : 'Send Message'}
+            </button>
               </div>
 
               {/* Direct Contact */}

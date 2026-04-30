@@ -1,17 +1,55 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { HiHeart, HiLocationMarker } from 'react-icons/hi'
 import { IoBedOutline, IoWaterOutline } from 'react-icons/io5'
 import { BiArea } from 'react-icons/bi'
-import { properties } from '../data/properties'
-
-// For now we'll show first 3 properties as "saved" - Firebase will handle real saved properties later
-const savedProperties = properties.slice(0, 3)
+import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore'
+import { db } from '../firebase/config'
+import { useAuth } from '../context/AuthContext'
 
 function SavedProperties() {
+  const [savedProperties, setSavedProperties] = useState([])
+  const [loading, setLoading] = useState(true)
+  const { user } = useAuth()
+
+  useEffect(() => {
+    const fetchSaved = async () => {
+      if (!user) return
+      try {
+        const snapshot = await getDocs(
+          collection(db, 'users', user.uid, 'saved'),
+        )
+        const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+        setSavedProperties(data)
+      } catch (error) {
+        console.error('Error fetching saved properties:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchSaved()
+  }, [user])
+
+  const handleUnsave = async (propertyId) => {
+    try {
+      await deleteDoc(doc(db, 'users', user.uid, 'saved', propertyId))
+      setSavedProperties(savedProperties.filter((p) => p.id !== propertyId))
+    } catch (error) {
+      console.error('Error removing saved property:', error)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className='min-h-screen flex items-center justify-center'>
+        <div className='w-10 h-10 border-4 border-brown border-t-transparent rounded-full animate-spin' />
+      </div>
+    )
+  }
+
   return (
     <div className='min-h-screen bg-gray-50 pt-24 pb-16 px-4'>
       <div className='max-w-7xl mx-auto'>
-        {/* Header */}
         <div className='mb-10'>
           <h1 className='text-3xl sm:text-4xl font-extrabold text-gray-900'>
             Saved Properties
@@ -35,7 +73,6 @@ function SavedProperties() {
                   key={property.id}
                   className='bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300 group'
                 >
-                  {/* Image */}
                   <div className='relative overflow-hidden h-56'>
                     <img
                       src={property.image}
@@ -47,13 +84,13 @@ function SavedProperties() {
                     >
                       {property.type}
                     </span>
-                    {/* Remove from saved */}
-                    <button className='absolute top-3 right-3 bg-white p-2 rounded-full shadow hover:bg-red-50 transition-colors duration-200'>
+                    <button
+                      onClick={() => handleUnsave(property.id)}
+                      className='absolute top-3 right-3 bg-white p-2 rounded-full shadow hover:bg-red-50 transition-colors duration-200'
+                    >
                       <HiHeart className='text-red-500' size={18} />
                     </button>
                   </div>
-
-                  {/* Details */}
                   <div className='p-5'>
                     <h3 className='text-gray-900 font-bold text-lg leading-snug'>
                       {property.title}
@@ -62,8 +99,6 @@ function SavedProperties() {
                       <HiLocationMarker className='text-brown' size={16} />
                       <span>{property.location}</span>
                     </div>
-
-                    {/* Features */}
                     <div className='flex items-center gap-4 mt-4 text-gray-600 text-sm border-t border-gray-100 pt-4'>
                       <div className='flex items-center gap-1'>
                         <IoBedOutline size={18} className='text-brown' />
@@ -78,8 +113,6 @@ function SavedProperties() {
                         <span>{property.area} m²</span>
                       </div>
                     </div>
-
-                    {/* Price & CTA */}
                     <div className='flex items-center justify-between mt-4'>
                       <p className='text-brown-dark font-extrabold text-lg'>
                         {formattedPrice}
@@ -96,7 +129,6 @@ function SavedProperties() {
             })}
           </div>
         ) : (
-          /* Empty State */
           <div className='flex flex-col items-center justify-center py-24 text-center'>
             <div className='w-20 h-20 bg-brown/10 rounded-full flex items-center justify-center mb-6'>
               <HiHeart className='text-brown' size={36} />
